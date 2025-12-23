@@ -4,6 +4,29 @@ body {
 	width: 100vw;
 }
 
+#bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: auto;
+
+  background-image: url("../img/background.png");
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-size: 100% auto;
+
+  z-index: -1;
+  pointer-events: none;
+}
+
+#canvas-parent{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
 canvas{
 	display: block;
 }
