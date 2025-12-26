@@ -5,7 +5,6 @@ class PlayerShot extends GameObject
         super(x, y, z, playerShotInitialDelay, playerShotTimer);
 
         this.canBeShot = true;
-        this.isActive = false;
         this.isExploding = false;
         this.explosionTimer = playerShotExplosionTimer;
 
@@ -28,32 +27,31 @@ class PlayerShot extends GameObject
 
         loadImage("img/player-shot/player-shot.png", async (img) => {
 			this.sprite = img;
-			this.width = img.width * unit;
-			this.height = img.height * unit;
+			this.width = img.width;
+			this.height = img.height;
             this.maskNormal = await createBitmask(img, 1);
 
 			spritesReady++;
+            this.isInitialized = tryInit(spritesReady, 2);
 		});
 
         loadImage("img/player-shot/player-shot-explosion.png", async (img) => {
 			this.explosionSprite = img;
-			this.explosionWidth = img.width * unit;
-			this.explosionHeight = img.height * unit;
+			this.explosionWidth = img.width;
+			this.explosionHeight = img.height;
             this.maskExplosion = await createBitmask(img, 1);
-            this.maskExplosion.offX = - Math.floor(this.maskExplosion.w/2);
-            this.maskExplosion.offY = 0;
+            this.maskExplosion.offX = - 3;
+            this.maskExplosion.offY = + 2;
 
 			spritesReady++;
-
-            while(spritesReady < 2 && this.mask == null) {}
-
-            this.isInitialized = true;
+            this.isInitialized = tryInit(spritesReady, 2);
 		});
     }
 
     start()
     {
         this.mask = this.maskNormal;
+        this.isActive = false;
     }
 
     shoot(x, y)
@@ -64,6 +62,7 @@ class PlayerShot extends GameObject
         this.y = y;
         this.canBeShot = false;
         this.isActive = true;
+        playerShotsCount++;
     }
 
     reset()
@@ -82,6 +81,8 @@ class PlayerShot extends GameObject
         this.isExploding = true;
         this.mask = this.maskExplosion;
         this.collidedShield = collidedShield;
+
+        if (this.y <= playerShotMaxY) this.y = playerShotMaxY;
     }
 
     update()
@@ -89,8 +90,6 @@ class PlayerShot extends GameObject
         if(!this.isInitialized || !this.isActive) return;
         if (this.initialDelay > 0) { this.initialDelay--; return; }
         if (this.timer > 0) { this.timer--; return; }
-
-        if (this.y <= 0) this.hit();
 
         if (this.isExploding)
         {
@@ -101,20 +100,52 @@ class PlayerShot extends GameObject
                 this.reset();
             }
         }
-        else this.y -= playerShotSpeedV;
+        else
+        {
+            this.y -= playerShotSpeedV;
+
+            if (plungerShot.isActive && !plungerShot.isExploding && pixelPerfectBitmask(this, plungerShot)) {
+                plungerShot.hit();
+                this.hit();
+            }
+
+            if (rollingShot.isActive && !rollingShot.isExploding && pixelPerfectBitmask(this, rollingShot)) {
+                rollingShot.hit();
+                this.hit();
+            }
+
+            if (squigglyShot.isActive && !squigglyShot.isExploding && pixelPerfectBitmask(this, squigglyShot)) {
+                squigglyShot.hit();
+                this.hit();
+            }
+
+            if (saucer.isActive && !saucer.isExploding && pixelPerfectBitmask(this, saucer)) {
+                this.reset();
+                saucer.kill();
+            }
+
+            if (this.y <= playerShotMaxY) this.hit();
+        }
     }
 
     render()
     {
         if(!this.isInitialized || !this.isActive) return;
         if (this.initialDelay > 0) return;
-        if (!this.isExploding) ctx.drawImage(this.sprite, this.x, this.y, this.width, this.height);
+
+        if (!this.isExploding) ctx.drawImage(this.sprite, this.x * unit, this.y * unit, this.width * unit, this.height * unit);
         else ctx.drawImage(
             this.explosionSprite, 
-            this.x - Math.floor(this.explosionWidth/2), 
-            this.y <= 0 ? 0 : this.y, 
-            this.explosionWidth, 
-            this.explosionHeight
+            (this.x - 3) * unit, 
+            (this.y + 2) * unit, 
+            this.explosionWidth * unit, 
+            this.explosionHeight * unit
         );
+
+        if (DEBUGMODE)
+        {
+            const A = maskBounds(this);
+            ctx.strokeRect(Math.round(A.x * unit), Math.round(A.y * unit), Math.round(A.w * unit), Math.round(A.h * unit));
+        }
     }
 }

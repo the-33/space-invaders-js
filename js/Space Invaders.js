@@ -9,158 +9,6 @@ addEventListener("keyup", function (e) {
     delete keysDown[e.keyCode];
 }, false);
 
-function makePool(n = 2) {
-  return Array.from({ length: n }, () => {
-    const c = document.createElement("canvas");
-    const ctx = c.getContext("2d", { willReadFrequently: true });
-    return { c, ctx, busy: false };
-  });
-}
-
-const pool = makePool(4);
-
-async function createBitmask(img, alphaThreshold = 10) {
-  let slot;
-  while (!(slot = pool.find(p => !p.busy))) {
-    await new Promise(r => setTimeout(r, 0));
-  }
-
-  slot.busy = true;
-  try {
-    const w = img.width, h = img.height;
-    slot.c.width = w; slot.c.height = h;
-    slot.ctx.clearRect(0, 0, w, h);
-    slot.ctx.drawImage(img, 0, 0);
-
-    const pixels = slot.ctx.getImageData(0, 0, w, h).data;
-    const wordsPerRow = (w + 31) >>> 5;
-    const data = new Uint32Array(wordsPerRow * h);
-
-    for (let y = 0; y < h; y++) {
-      const rowBase = y * wordsPerRow;
-      for (let x = 0; x < w; x++) {
-        if (pixels[(y * w + x) * 4 + 3] >= alphaThreshold) {
-          data[rowBase + (x >>> 5)] |= (1 << (x & 31));
-        }
-      }
-    }
-
-    return { w, h, wordsPerRow, data, offX: 0, offY: 0 };
-  } finally {
-    slot.busy = false;
-  }
-}
-
-function maskBounds(obj, u = unit) {
-  const offX = obj.mask?.offX ?? 0;
-  const offY = obj.mask?.offY ?? 0;
-
-  const x = obj.x + offX * u;
-  const y = obj.y + offY * u;
-  const w = obj.mask ? obj.mask.w * u : obj.width;
-  const h = obj.mask ? obj.mask.h * u : obj.height;
-
-  return { x, y, w, h };
-}
-
-function aabbOverlap(a, b, u = unit) {
-  const A = maskBounds(a, u);
-  const B = maskBounds(b, u);
-
-  const x1 = Math.max(A.x, B.x);
-  const y1 = Math.max(A.y, B.y);
-  const x2 = Math.min(A.x + A.w, B.x + B.w);
-  const y2 = Math.min(A.y + A.h, B.y + B.h);
-
-  if (x2 <= x1 || y2 <= y1) return null;
-  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
-}
-
-function read32FromRow(mask, y, bitX) {
-  if (!mask || !Number.isFinite(y) || !Number.isFinite(bitX)) return 0;
-
-  const { wordsPerRow, data } = mask;
-
-  const wordIndex = (bitX >>> 5);
-  const shift = (bitX & 31);
-  const base = y * wordsPerRow + wordIndex;
-
-  if (base < 0 || base >= data.length) return 0;
-
-  const lo = data[base] >>> shift;
-  if (shift === 0) return lo;
-
-  const next = base + 1;
-  const rowEnd = (y + 1) * wordsPerRow;
-  const hi = (next < rowEnd) ? (data[next] << (32 - shift)) : 0;
-
-  return (lo | hi) >>> 0;
-}
-
-function pixelPerfectBitmask(a, b, u = unit) {
-  const overlap = aabbOverlap(a, b, u);
-  if (!overlap) return false;
-
-  if (!a.mask || !b.mask) return false;
-  if (!Number.isFinite(u) || u <= 0) return false;
-
-  const aOffX = a.mask.offX ?? 0;
-  const aOffY = a.mask.offY ?? 0;
-  const bOffX = b.mask.offX ?? 0;
-  const bOffY = b.mask.offY ?? 0;
-
-  // origen en pantalla de cada máscara
-  const axScreen = a.x + aOffX * u;
-  const ayScreen = a.y + aOffY * u;
-  const bxScreen = b.x + bOffX * u;
-  const byScreen = b.y + bOffY * u;
-
-  const ax0 = Math.floor((overlap.x - axScreen) / u);
-  const ay0 = Math.floor((overlap.y - ayScreen) / u);
-  const ax1 = Math.ceil ((overlap.x + overlap.w - axScreen) / u);
-  const ay1 = Math.ceil ((overlap.y + overlap.h - ayScreen) / u);
-
-  const bx0 = Math.floor((overlap.x - bxScreen) / u);
-  const by0 = Math.floor((overlap.y - byScreen) / u);
-  const bx1 = Math.ceil ((overlap.x + overlap.w - bxScreen) / u);
-  const by1 = Math.ceil ((overlap.y + overlap.h - byScreen) / u);
-
-  const mw = Math.min(ax1 - ax0, bx1 - bx0);
-  const mh = Math.min(ay1 - ay0, by1 - by0);
-  if (mw <= 0 || mh <= 0) return false;
-
-  for (let my = 0; my < mh; my++) {
-    const ay = ay0 + my;
-    const by = by0 + my;
-
-    if (ay < 0 || ay >= a.mask.h || by < 0 || by >= b.mask.h) continue;
-
-    for (let dx = 0; dx < mw; dx += 32) {
-      const chunkW = Math.min(32, mw - dx);
-
-      const bitsA = read32FromRow(a.mask, ay, ax0 + dx);
-      const bitsB = read32FromRow(b.mask, by, bx0 + dx);
-
-      const validMask = (chunkW === 32) ? 0xFFFFFFFF : ((1 << chunkW) - 1);
-      if (((bitsA & bitsB) & validMask) !== 0) return true;
-    }
-  }
-
-  return false;
-}
-
-function clearBit(mask, x, y) {
-  const { wordsPerRow, data } = mask;
-  if (x < 0 || x >= mask.w || y < 0 || y >= mask.h) return;
-  const idx = y * wordsPerRow + (x >>> 5);
-  data[idx] &= ~(1 << (x & 31));
-}
-
-function lsbIndex32(x) {
-  const lsb = x & -x;
-  return 31 - Math.clz32(lsb);
-}
-
 var gameObjects = [];
 
 function addGameObject(go) {
@@ -182,6 +30,9 @@ addGameObject(shield1);
 addGameObject(shield2);
 addGameObject(shield3);
 addGameObject(shield4);
+
+var ground = new GroundLine(0, groundLineY, gameWidth, 1)
+addGameObject(ground);
 
 loadAlienAssets();
 
@@ -230,9 +81,14 @@ function start() {
 	referenceAlien.x = alienRefPos[0];
 	referenceAlien.y = alienRefPos[1];
 
-    for (let go of gameObjects) {
-     	go.start();
-    }
+  for (let go of gameObjects) {
+    go.start();
+  }
+
+  plungerShot.start();
+  squigglyShot.start();
+  rollingShot.start();
+  saucer.start();
 }
 
 var directionApplied = false;
@@ -284,10 +140,132 @@ function updateAliens()
   while(aliens[row][col] != referenceAlien && aliens[row][col].isDead);
 }
 
+var plungerShot = new AlienShot(AlienShotType.PLUNGER, 0, 0);
+var squigglyShot = new AlienShot(AlienShotType.SQUIGGLY, 0, 0);
+var rollingShot = new AlienShot(AlienShotType.ROLLING, 0, 0);
+var saucer = new Saucer(0, 0);
+
+function findColumn(x)
+{
+  var columnIndex = 0;
+  for (var i = 1; i < alienColumnAmount; i++)
+  {
+    if (x >= alienRefPos[0] + 16 * i) columnIndex = i;
+  }
+  return columnIndex;
+}
+
+function findInColumn(column)
+{
+  for (var i = 0; i < alienRowAmount; i++)
+  {
+    if (!aliens[i][column].isDead) return [aliens[i][column].x + 7, aliens[i][column].y + 18 - squigglyShot.height];
+  }
+
+  return false;
+}
+
+function canAliensFireNow(thisShot, otherA, otherB, reloadRate) {
+  if (!alienFire || !thisShot.canbeShot || player.isDead) return false;
+
+  if (otherA.delayTimer != 0 && otherA.delayTimer <= reloadRate) return false;
+  if (otherB.delayTimer != 0 && otherB.delayTimer <= reloadRate) return false;
+
+  return true;
+}
+
+function updateAlienEvents()
+{
+  var delay = getAlienShotDelay();
+
+  shotSync = (shotSyncOverride !== null) ? shotSyncOverride : obj2TimerExtra;
+  shotSyncOverride = null;
+
+  if (shotSync == 0)
+  {
+    if (!rollingShot.canbeShot) rollingShot.update();
+    else if (canAliensFireNow(rollingShot, plungerShot, squigglyShot, delay))
+    {
+      const column = findColumn(player.x + 8);
+      const shootingPos = findInColumn(column);
+
+      if (shootingPos !== false) {
+        rollingShot.shoot(shootingPos[0], shootingPos[1]);
+        rollingShot.delayTimer++;
+      }
+    }
+
+    obj2TimerExtra = 2;
+    return;
+  }
+  else if (shotSync == 1)
+  {
+    if (!skipPlunger)
+    {
+      if (!plungerShot.canbeShot) plungerShot.update();
+      else if (canAliensFireNow(plungerShot, rollingShot, squigglyShot, delay))
+      {
+        const column = getNextPlungerShotColumn()-1;
+        const shootingPos = findInColumn(column);
+
+        if (shootingPos !== false) {
+          plungerShot.shoot(shootingPos[0], shootingPos[1]);
+          plungerShot.delayTimer++;
+        }
+      }
+    }
+  }
+  else if (shotSync == 2)
+  {
+    if (!squigglyShot.canbeShot) squigglyShot.update();
+    else if (saucer.isActive)
+    {
+      saucer.update();
+    }
+    else if (saucerFlag && aliensAlive >= 8)
+    {
+      saucer.launch();
+      saucerFlag = false;
+    }
+    else if (canAliensFireNow(squigglyShot, rollingShot, plungerShot, delay))
+    {
+      const column = getNextSquigglyShotColumn()-1;
+      const shootingPos = findInColumn(column);
+
+      if (shootingPos !== false) {
+        squigglyShot.shoot(shootingPos[0], shootingPos[1]);
+        squigglyShot.delayTimer++;
+      }
+    }
+  }
+
+  if (obj2TimerExtra > 0) obj2TimerExtra--;
+}
+
 function update()
 {
   if (lives > 0)
   {
+    if (!obtainedExtraLife && playerScore >= 1500) lives++;
+
+    if(alienRefPos[1] > minAlienYToSaucer)
+    {
+      if (timeUntilSaucer == 0) {
+          timeUntilSaucer = 0x0600;
+          saucerFlag = true;
+      }
+      timeUntilSaucer--;
+    }
+
+    if (!player.isDead && player.initialDelay == 0)
+    {
+      if (--alienFireTimer <= 0)
+      {
+        alienFireTimer = 0;
+        alienFire = true;
+      }
+    }
+    
     for(let go of gameObjects)
     {
       go.update();
@@ -295,21 +273,57 @@ function update()
     
     if (aliensAlive > 0)
     {
-      if (!player.isDead) updateAliens();
+      if (!player.isDead)
+      {
+        updateAliens();
+      }
+      updateAlienEvents();
     }
     else
     {
       level++;
+      player.x = playerStartPosition[0];
+      player.initialDelay = playerInitialDelay;
+
+      playerShot.reset();
+      plungerShot.reset();
+      squigglyShot.reset();
+      rollingShot.reset();
+      saucer.reset();
+
+      skipPlunger = false;
+      shotSync = 2;
+      obj2TimerExtra = 2;
+      timeUntilSaucer = saucerTimer;
+      saucerFlag = false;
+
+      shield1 = new Shield(shield1PosX, shieldsPosY);
+      shield2 = new Shield(shield2PosX, shieldsPosY);
+      shield3 = new Shield(shield3PosX, shieldsPosY);
+      shield4 = new Shield(shield4PosX, shieldsPosY);
+
       resetAliens();
     }
 
-    if (keysDown[keyMap.R]) gameUpdateRate = 1/2000;
-    else gameUpdateRate = 1/60;
+    if (DEBUGMODE)
+    {
+      if (keysDown[keyMap.R]) gameUpdateRate = 1/2000;
+      else gameUpdateRate = 1/60;
+    }
   }
   else if (player.deadAnimationTimer <= 0)
   {
     player.isActive = false;
     playerShot.isActive = false;
+    shield1.isActive = false;
+    shield2.isActive = false;
+    shield3.isActive = false;
+    shield4.isActive = false;
+    ground.isActive = false;
+    plungerShot.isActive = false;
+    squigglyShot.isActive = false;
+    rollingShot.isActive = false;
+    saucer.isActive = false;
     for(var i = 0; i < alienRowAmount; i++)
     {
       for(var j = 0; j < alienColumnAmount; j++)
@@ -321,10 +335,53 @@ function update()
   else player.update();
 }
 
+function recolorWhiteBands(ctx, w, h, yMaxRed, yMinGreen, opts = {}) {
+  const {
+    whiteThreshold = 250,
+
+    tolerance = 5,
+  } = opts;
+
+  const img = ctx.getImageData(0, 0, w, h);
+  const d = img.data;
+
+  const yTopEnd = Math.max(0, Math.min(h, yMaxRed | 0));
+  const yBottomStart = Math.max(0, Math.min(h, yMinGreen | 0));
+
+  for (let y = 0; y < h; y++) {
+    let mode = 0;
+    if (y < yTopEnd) mode = 1;
+    else if (y >= yBottomStart) mode = 2;
+    else continue;
+
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      const a = d[i + 3];
+      if (a === 0) continue;
+
+      const r = d[i], g = d[i + 1], b = d[i + 2];
+
+      if (
+        r >= whiteThreshold - tolerance &&
+        g >= whiteThreshold - tolerance &&
+        b >= whiteThreshold - tolerance
+      ) {
+        if (mode === 1) {
+          d[i] = 255; d[i + 1] = 0;   d[i + 2] = 0;
+        } else {
+          d[i] = 0;   d[i + 1] = 255; d[i + 2] = 0;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(img, 0, 0);
+}
+
 function render() 
 {
   // Background
-  ctx.fillStyle = "#222222FF";
+  ctx.fillStyle = "#111111FF";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // Render in z-order
@@ -333,6 +390,16 @@ function render()
   for (let go of gameObjects) {
   if (go.initialDelay <= 0) go.render(ctx);
   }
+
+  if (!skipPlunger) plungerShot.render();
+  squigglyShot.render();
+  rollingShot.render();
+  saucer.render();
+
+  recolorWhiteBands(ctx, canvas.width, canvas.height, (saucerPosY + saucer.height + 3) * unit, (shieldsPosY - 3) * unit, {
+    whiteThreshold: 255,
+    tolerance: 0
+  });
 }
 
 function loadImage(src, callback)
@@ -348,8 +415,14 @@ var lastTime = 0;
 var accumulator = 0;
 
 function main(timestamp) {
-    if (!lastTime) lastTime = timestamp;
-    var dt = (timestamp - lastTime) / 1000;
+  canvas.height = window.innerHeight;
+  canvas.width = canvas.height * 0.875;
+  unit = canvas.height/256; 
+  ctx.imageSmoothingEnabled = false;
+  ctx.strokeStyle = "lime";
+
+  if (!lastTime) lastTime = timestamp;
+  var dt = (timestamp - lastTime) / 1000;
 
 	while (accumulator >= gameUpdateRate)
 	{
@@ -367,7 +440,11 @@ function main(timestamp) {
 
 function waitForGOInit()
 {
-	let allReady = gameObjects.every(go => go.isInitialized) && allAlienAssetsLoaded();
+	let allReady = gameObjects.every(go => go.isInitialized) 
+    && allAlienAssetsLoaded()
+    && plungerShot.isInitialized
+    && rollingShot.isInitialized
+    && squigglyShot.isInitialized;
 
 	if(!allReady) requestAnimationFrame(waitForGOInit);
 	else

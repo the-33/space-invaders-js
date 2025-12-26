@@ -21,26 +21,26 @@ class Player extends GameObject
         
         loadImage("img/player/player.png", async (img) => {
 			this.spriteAlive = img;
-			this.width = img.width * unit;
-			this.height = img.height * unit;
-            this.mask = await createBitmask(img, 0);
+			this.width = img.width;
+			this.height = img.height;
+            this.mask = await createBitmask(img, 1);
 
 			spritesReady++;
+            this.isInitialized = tryInit(spritesReady, 3);
 		});
 
         loadImage("img/player/player-death/1.png", (img) => {
 			this.spriteDead1 = img;
 
 			spritesReady++;
+            this.isInitialized = tryInit(spritesReady, 3);
 		});
 
         loadImage("img/player/player-death/2.png", (img) => {
 			this.spriteDead2 = img;
 
 			spritesReady++;
-
-            while(spritesReady < 3) {}
-            this.isInitialized = true;
+            this.isInitialized = tryInit(spritesReady, 3);
 		});
 
         this.currentSprite = null;
@@ -77,6 +77,8 @@ class Player extends GameObject
         {
             this.deadAnimationTimer--;
             this.respawnTimer--;
+            alienFire = false;
+            alienFireTimer = alienFireDelay;
 
             if (this.deadAnimationTimer <= 0 && this.respawnTimer >= respawnDelay- deadAnimationDuration)
             {
@@ -106,6 +108,12 @@ class Player extends GameObject
         if (this.initialDelay > 0) return;
         if (this.isDead && this.respawnTimer <= respawnDelay - deadAnimationDuration) return;
 
-        ctx.drawImage(this.currentSprite, this.x, this.y, this.width, this.height);
+        ctx.drawImage(this.currentSprite, this.x * unit, this.y * unit, this.width * unit, this.height * unit);
+
+        if (DEBUGMODE)
+        {
+            const A = maskBounds(this);
+            ctx.strokeRect(Math.round(A.x * unit), Math.round(A.y * unit), Math.round(A.w * unit), Math.round(A.h * unit));
+        }
     }
 }

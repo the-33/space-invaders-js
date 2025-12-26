@@ -128,8 +128,8 @@ class Alien extends GameObject
                 this.leftPadding = 2;
         }
 
-        this.width = 16*unit;
-        this.height = 8*unit;
+        this.width = 16;
+        this.height = 8;
 
         this.currentSprite = this.sprite1;
         this.mask = this.mask1;
@@ -164,7 +164,7 @@ class Alien extends GameObject
         if ((this.x  <= playfieldLeft - this.leftPadding || this.x >= playfieldRight - this.width + this.rightPadding) && !directionChanged)
         {
             aliensDirection *= -1;
-            alienRefNextPos[1] += 8 * unit;
+            alienRefNextPos[1] += 8;
             directionChanged = true;
         }
         
@@ -174,24 +174,25 @@ class Alien extends GameObject
 
     checkCollisionWithBullet()
     {
-        if(!playerShot.isActive) return;
+        if(!playerShot.isActive || playerShot.isExploding) return;
         if (pixelPerfectBitmask(this, playerShot))
         {
             this.isDead = true;
             playerShot.reset();
             aliensAlive--;
+            if (aliensAlive == 1) skipPlunger = true;
             switch(this.type)
-        {
-            case AlienType.CRAB:
-                playerScore += 20;
-                break;
-            case AlienType.SQUID:
-                playerScore += 30;
-                break;
-            case AlienType.OCTOPUS:
-            default:
-                playerScore += 10;
-        }
+            {
+                case AlienType.CRAB:
+                    playerScore += 20;
+                    break;
+                case AlienType.SQUID:
+                    playerScore += 30;
+                    break;
+                case AlienType.OCTOPUS:
+                default:
+                    playerScore += 10;
+            }
         }
     }
 
@@ -232,7 +233,13 @@ class Alien extends GameObject
         if(!this.isInitialized || !this.isActive) return;
         if (this.initialDelay > 0) return;
 
-        if (!this.isDead) ctx.drawImage(this.currentSprite, this.x, this.y, this.width, this.height);
-        else ctx.drawImage(this.spriteDead, this.x, this.y, this.width, this.height);
+        if (!this.isDead) ctx.drawImage(this.currentSprite, this.x * unit, this.y * unit, this.width * unit, this.height * unit);
+        else ctx.drawImage(this.spriteDead, this.x * unit, this.y * unit, this.width * unit, this.height * unit);
+
+        if (DEBUGMODE)
+        {
+            const A = maskBounds(this);
+            ctx.strokeRect(Math.round(A.x * unit), Math.round(A.y * unit), Math.round(A.w * unit), Math.round(A.h * unit));
+        }
     }
 }

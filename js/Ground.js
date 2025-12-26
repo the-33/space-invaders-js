@@ -1,5 +1,5 @@
-class Shield extends GameObject {
-  constructor(xL, yL, z = 0) {
+class GroundLine extends GameObject {
+  constructor(xL, yL, wPx, hPx, z = 0) {
     super(xL | 0, yL | 0, z, 0, 0);
 
     this.width = 0;
@@ -12,32 +12,37 @@ class Shield extends GameObject {
     this._imgData = null;
     this._pix = null;
 
-    loadImage("img/shield/shield.png", async (img) => {
-      const baseMask = await createBitmask(img, 1);
+    const w = wPx | 0;
+    const h = hPx | 0;
 
-      this.mask = {
-        w: baseMask.w | 0,
-        h: baseMask.h | 0,
-        wordsPerRow: baseMask.wordsPerRow | 0,
-        data: new Uint32Array(baseMask.data),
-        offX: 0,
-        offY: 0
-      };
+    const wordsPerRow = (w + 31) >>> 5;
+    const data = new Uint32Array(wordsPerRow * h);
 
-      this.width = this.mask.w;
-      this.height = this.mask.h;
+    for (let i = 0; i < data.length; i++) data[i] = 0xFFFFFFFF;
 
-      this._c.width = this.mask.w;
-      this._c.height = this.mask.h;
-      this._ctx.clearRect(0, 0, this._c.width, this._c.height);
-      this._ctx.imageSmoothingEnabled = false;
-      this._ctx.drawImage(img, 0, 0);
+    const extraBits = (wordsPerRow << 5) - w;
+    if (extraBits > 0) {
+      const keepMask = (0xFFFFFFFF >>> extraBits) >>> 0;
+      for (let row = 0; row < h; row++) {
+        data[row * wordsPerRow + (wordsPerRow - 1)] &= keepMask;
+      }
+    }
 
-      this._imgData = this._ctx.getImageData(0, 0, this._c.width, this._c.height);
-      this._pix = this._imgData.data;
+    this.mask = { w, h, wordsPerRow, data, offX: 0, offY: 0 };
 
-      this.isInitialized = true;
-    });
+    this.width = w;
+    this.height = h;
+
+    this._c.width = w;
+    this._c.height = h;
+    this._ctx.clearRect(0, 0, w, h);
+    this._ctx.fillStyle = "rgba(255,255,255,1)";
+    this._ctx.fillRect(0, 0, w, h);
+
+    this._imgData = this._ctx.getImageData(0, 0, w, h);
+    this._pix = this._imgData.data;
+
+    this.isInitialized = true;
   }
 
   checkHitAndDamage(other) {
@@ -82,6 +87,7 @@ class Shield extends GameObject {
         let overlapBits = ((bitsA & bitsB) & validMask) >>> 0;
 
         if (overlapBits === 0) continue;
+
         hit = true;
 
         while (overlapBits) {
@@ -108,13 +114,6 @@ class Shield extends GameObject {
     return hit;
   }
 
-  update() {
-
-    if (playerShot.isActive && !playerShot.isExploding && this.checkHitAndDamage(playerShot)) {
-      playerShot.hit(this);
-    }
-  }
-
   render(ctx) {
     if (!this.isInitialized || !this.isActive) return;
     if (this.initialDelay > 0) return;
@@ -126,14 +125,10 @@ class Shield extends GameObject {
 
     const sx = Math.round((this.x + offX) * u);
     const sy = Math.round((this.y + offY) * u);
-
     const sw = Math.round(this.width * u);
     const sh = Math.round(this.height * u);
-    
-    ctx.drawImage(this._c, sx, sy, sw, sh);
 
-    if (DEBUGMODE) {
-      ctx.strokeRect(sx, sy, sw, sh);
-    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this._c, sx, sy, sw, sh);
   }
 }
