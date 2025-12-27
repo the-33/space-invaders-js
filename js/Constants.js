@@ -60,7 +60,7 @@ const alienColumnAmount = 11;
 var col = 0;
 var row = 0;
 
-var aliensAlive = alienRowAmount * alienColumnAmount; // At the start 55
+var aliensAlive = alienRowAmount * alienColumnAmount;; // At the start 55
 
 const alienRefStartingPosx = 23;
 const alienRefStartingPosYRound1 = 120; // Level 1

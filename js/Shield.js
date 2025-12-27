@@ -108,6 +108,46 @@ class Shield extends GameObject {
     return hit;
   }
 
+  async reset() {
+  this.isInitialized = false;
+
+  await new Promise(resolve => {
+      loadImage("img/shield/shield.png", async (img) => {
+
+        const baseMask = await createBitmask(img, 1);
+
+        // --- Reset máscara ---
+        this.mask = {
+          w: baseMask.w | 0,
+          h: baseMask.h | 0,
+          wordsPerRow: baseMask.wordsPerRow | 0,
+          data: new Uint32Array(baseMask.data),
+          offX: 0,
+          offY: 0
+        };
+
+        this.width = this.mask.w;
+        this.height = this.mask.h;
+
+        // --- Reset canvas interno ---
+        this._c.width = this.mask.w;
+        this._c.height = this.mask.h;
+
+        this._ctx.clearRect(0, 0, this._c.width, this._c.height);
+        this._ctx.imageSmoothingEnabled = false;
+        this._ctx.drawImage(img, 0, 0);
+
+        this._imgData = this._ctx.getImageData(0, 0, this._c.width, this._c.height);
+        this._pix = this._imgData.data;
+
+        this.isActive = true;
+        this.isInitialized = true;
+
+        resolve();
+      });
+    });
+  }
+
   update() {
 
     if (playerShot.isActive && !playerShot.isExploding && this.checkHitAndDamage(playerShot)) {

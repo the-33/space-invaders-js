@@ -60,6 +60,7 @@ class Saucer extends GameObject
         this.explosionTimer = saucerExplosionAnimationDuration;
         this.isActive = false;
         this.isExploding = false;
+        window.sound?.ufoStop();
     }
 
     kill()

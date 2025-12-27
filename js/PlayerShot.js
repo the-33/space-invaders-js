@@ -57,12 +57,14 @@ class PlayerShot extends GameObject
     shoot(x, y)
     {
         if (!this.canBeShot) return;
-
+        
         this.x = x;
         this.y = y;
         this.canBeShot = false;
         this.isActive = true;
         playerShotsCount++;
+
+        window.sound?.playShoot();
     }
 
     reset()
@@ -122,6 +124,8 @@ class PlayerShot extends GameObject
             if (saucer.isActive && !saucer.isExploding && pixelPerfectBitmask(this, saucer)) {
                 this.reset();
                 saucer.kill();
+                window.sound?.ufoDead();
+                window.sound?.ufoStop();
             }
 
             if (this.y <= playerShotMaxY) this.hit();
