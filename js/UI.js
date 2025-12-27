@@ -12,7 +12,7 @@ class GameUI {
     this.init();
   }
 
-  init() {
+  async init() {
     if (!document.body) {
       window.addEventListener("DOMContentLoaded", () => this.init());
       return;
@@ -23,6 +23,8 @@ class GameUI {
     this.ui = document.createElement("div");
     this.ui.id = "game-ui";
     document.body.appendChild(this.ui);
+
+    await document.fonts.ready;
 
     // ESC toggles pause during play
     window.addEventListener("keydown", (e) => {
@@ -87,12 +89,13 @@ class GameUI {
       }
 
       .arcade-title{
-        font-family: monospace;
+        font-family: Invaders, monospace;
         font-weight: 800;
         letter-spacing: 3px;
         text-align:center;
         font-size: 40px;
-        margin: 0 0 8px;
+        margin-bottom: 18px;
+        margin-left: 15px;
         color: #eaffea;
         text-shadow:
           0 0 10px rgba(0,255,0,0.25),
@@ -101,11 +104,12 @@ class GameUI {
       }
 
       .arcade-sub{
-        font-family: monospace;
+        font-family: Invaders, monospace;
         text-align:center;
         font-size: 12px;
         color: rgba(255,255,255,0.80);
-        margin: 0 0 18px;
+        margin-bottom: 18px;
+        margin-left: 15px;
         user-select:none;
       }
 
@@ -126,11 +130,12 @@ class GameUI {
       .btn-arcade{
         min-width: 240px;
         padding: 14px 18px;
+        padding-left: 29px;
         border-radius: 14px;
         border: 2px solid rgba(255,255,255,0.12);
         background: linear-gradient(to bottom, rgba(28,34,44,0.95), rgba(10,12,16,0.95));
         color: #eaffea;
-        font-family: monospace;
+        font-family: Invaders, monospace;
         font-size: 18px;
         letter-spacing: 2px;
         cursor:pointer;
@@ -176,7 +181,7 @@ class GameUI {
         border-radius: 12px;
         border: 2px solid rgba(255,255,255,0.10);
         background: rgba(0,0,0,0.25);
-        font-family: monospace;
+        font-family: Invaders, monospace;
         color: rgba(255,255,255,0.88);
         letter-spacing: 1px;
       }
@@ -226,7 +231,7 @@ class GameUI {
 
     this.renderCard(
       "SPACE INVADERS",
-      "A/D or ←/→ move • SPACE shoot • ESC pause",
+      "A/D or <span style = \"font-size: 20px;\">←</span>/<span style = \"font-size: 20px;\">→</span> move • SPACE shoot • ESC pause",
       `
         <button id="ui-play" class="btn-arcade btn-primary">PLAY</button>
         <button id="ui-settings" class="btn-arcade">SETTINGS</button>
@@ -296,7 +301,7 @@ class GameUI {
 
     this.renderCard(
       "PAUSED",
-      "",
+      "Press ESC again to continue.",
       `
         <button id="ui-resume" class="btn-arcade btn-primary">RESUME</button>
         <button id="ui-settings" class="btn-arcade">SETTINGS</button>
@@ -400,17 +405,10 @@ class GameUI {
     rollingShot?.reset?.();
     saucer?.reset?.();
 
-    // Reset shields
-    shield1 = new Shield(shield1PosX, shieldsPosY);
-    shield2 = new Shield(shield2PosX, shieldsPosY);
-    shield3 = new Shield(shield3PosX, shieldsPosY);
-    shield4 = new Shield(shield4PosX, shieldsPosY);
+    resetShields();
+    ground.reset();
 
-    // Add shields to gameObjects if not already
-    if (!gameObjects.includes(shield1)) gameObjects.push(shield1);
-    if (!gameObjects.includes(shield2)) gameObjects.push(shield2);
-    if (!gameObjects.includes(shield3)) gameObjects.push(shield3);
-    if (!gameObjects.includes(shield4)) gameObjects.push(shield4);
+    sound._stepIndex = 0;
 
     alienFire = false;
     alienFireTimer = alienFireDelay;

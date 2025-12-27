@@ -106,21 +106,6 @@ class PlayerShot extends GameObject
         {
             this.y -= playerShotSpeedV;
 
-            // Check collision with aliens
-            for (let i = 0; i < alienRowAmount; i++) {
-                for (let j = 0; j < alienColumnAmount; j++) {
-                    let alien = aliens[i][j];
-                    if (alien.isActive && !alien.isDead && pixelPerfectBitmask(this, alien)) {
-                        alien.isDead = true;
-                        aliensAlive--;
-                        playerScore += 10;
-                        this.hit();
-                        window.sound?.playInvaderKilled();
-                        return; // Exit after hitting one
-                    }
-                }
-            }
-
             if (plungerShot.isActive && !plungerShot.isExploding && pixelPerfectBitmask(this, plungerShot)) {
                 plungerShot.hit();
                 this.hit();

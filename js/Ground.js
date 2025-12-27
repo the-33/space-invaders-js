@@ -2,6 +2,9 @@ class GroundLine extends GameObject {
   constructor(xL, yL, wPx, hPx, z = 0) {
     super(xL | 0, yL | 0, z, 0, 0);
 
+    this._baseW = wPx | 0;
+    this._baseH = hPx | 0;
+
     this.width = 0;
     this.height = 0;
 
@@ -12,8 +15,12 @@ class GroundLine extends GameObject {
     this._imgData = null;
     this._pix = null;
 
-    const w = wPx | 0;
-    const h = hPx | 0;
+    this._build();
+  }
+
+  _build() {
+    const w = this._baseW | 0;
+    const h = this._baseH | 0;
 
     const wordsPerRow = (w + 31) >>> 5;
     const data = new Uint32Array(wordsPerRow * h);
@@ -36,6 +43,7 @@ class GroundLine extends GameObject {
     this._c.width = w;
     this._c.height = h;
     this._ctx.clearRect(0, 0, w, h);
+    this._ctx.imageSmoothingEnabled = false;
     this._ctx.fillStyle = "rgba(255,255,255,1)";
     this._ctx.fillRect(0, 0, w, h);
 
@@ -43,6 +51,14 @@ class GroundLine extends GameObject {
     this._pix = this._imgData.data;
 
     this.isInitialized = true;
+  }
+
+  reset() {
+    this.isInitialized = false;
+
+    this.isActive = true;
+
+    this._build();
   }
 
   checkHitAndDamage(other) {

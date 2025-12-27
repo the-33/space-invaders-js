@@ -9,6 +9,8 @@ class SoundManager {
     this._loops = new Map();      // key -> Audio (loop)
     this._ready = false;
 
+    this._stepIndex = 0;
+
     this.manifest = {
       shoot: "sfx/shoot.wav",
       invaderKilled: "sfx/invader-killed.wav",
@@ -132,7 +134,6 @@ class SoundManager {
 
   invaderStepNext() {
     // 1-2-3-4 loop
-    if (!this._stepIndex) this._stepIndex = 0;
     const keys = ["step1", "step2", "step3", "step4"];
     this.play(keys[this._stepIndex], { volume: 0.65 });
     this._stepIndex = (this._stepIndex + 1) % 4;

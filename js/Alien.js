@@ -178,6 +178,7 @@ class Alien extends GameObject
         if (pixelPerfectBitmask(this, playerShot))
         {
             this.isDead = true;
+            window.sound?.playInvaderKilled();
             playerShot.reset();
             aliensAlive--;
             if (aliensAlive == 1) skipPlunger = true;
