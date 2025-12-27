@@ -1,5 +1,8 @@
 var keysDown = {};
 var prevKeys = {};
+var hiScore = Number(localStorage.getItem("hiScore") || 0);
+
+
 
 addEventListener("keydown", function (e) {
     keysDown[e.keyCode] = true;
@@ -120,6 +123,7 @@ function updateAliens()
     referenceAlien.updatePosition(newX, newY);
     alienRefPos[0] = newX;
     alienRefPos[1] = newY;
+    window.sound?.invaderStepNext();
     
   }
   else
@@ -226,6 +230,7 @@ function updateAlienEvents()
     {
       saucer.launch();
       saucerFlag = false;
+      window.sound?.ufoStart();
     }
     else if (canAliensFireNow(squigglyShot, rollingShot, plungerShot, delay))
     {
@@ -244,6 +249,12 @@ function updateAlienEvents()
 
 function update()
 {
+
+  if (playerScore > hiScore) {
+  hiScore = playerScore;
+  localStorage.setItem("hiScore", String(hiScore));
+}
+
   if (lives > 0)
   {
     if (!obtainedExtraLife && playerScore >= 1500) lives++;
@@ -284,6 +295,7 @@ function update()
       level++;
       player.x = playerStartPosition[0];
       player.initialDelay = playerInitialDelay;
+      aliensAlive = alienRowAmount * alienColumnAmount;
 
       playerShot.reset();
       plungerShot.reset();
@@ -301,6 +313,9 @@ function update()
       shield2 = new Shield(shield2PosX, shieldsPosY);
       shield3 = new Shield(shield3PosX, shieldsPosY);
       shield4 = new Shield(shield4PosX, shieldsPosY);
+
+      alienFire = false;
+      alienFireTimer = alienFireDelay;
 
       resetAliens();
     }
@@ -334,6 +349,15 @@ function update()
   }
   else player.update();
 }
+
+
+function pad4(n) {
+  n = Math.max(0, n | 0);
+  return String(n).padStart(4, "0");
+}
+
+
+
 
 function recolorWhiteBands(ctx, w, h, yMaxRed, yMinGreen, opts = {}) {
   const {
@@ -384,6 +408,8 @@ function render()
   ctx.fillStyle = "#111111FF";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  
+
   // Render in z-order
   gameObjects.sort((a, b) => a.z - b.z);
 
@@ -400,7 +426,79 @@ function render()
     whiteThreshold: 255,
     tolerance: 0
   });
+
+  drawHUD(ctx);
 }
+
+function drawHUD(ctx) {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+
+  ctx.fillStyle = "white";
+  ctx.textBaseline = "top";
+  ctx.font = `${Math.round(10 * unit)}px monospace`;
+
+  const topY = Math.round(8 * unit);
+
+  // SCORE
+  ctx.fillText("SCORE", Math.round(16 * unit), topY);
+  ctx.fillText(
+    String(playerScore).padStart(4, "0"),
+    Math.round(28 * unit),
+    Math.round(22 * unit)
+  );
+
+  // HI-SCORE
+  const midX = Math.round(canvas.width / 2);
+  ctx.fillText("HI-SCORE", midX - Math.round(42 * unit), topY);
+  ctx.fillText(
+    String(hiScore).padStart(4, "0"),
+    midX - Math.round(28 * unit),
+    Math.round(22 * unit)
+  );
+
+
+
+
+const lineY = Math.round(groundLineY * unit);
+
+
+const margin = Math.round(16 * unit);
+
+
+const hudBottomY = lineY + margin;
+
+const livesX = Math.round(16 * unit);
+
+
+ctx.textBaseline = "bottom";
+ctx.fillStyle = "white";
+ctx.font = `${Math.round(12 * unit)}px monospace`;
+ctx.fillText(String(lives), livesX, hudBottomY);
+
+
+const iconSrc = player?.hudIconGreen || player?.spriteAlive;
+if (player && iconSrc) {
+  const scale = 1;
+  const iconW = Math.round(player.width * unit * scale);
+  const iconH = Math.round(player.height * unit * scale);
+
+  const startX = livesX + Math.round(22 * unit);
+  const gap = Math.round(10 * unit);
+
+  const iconY = hudBottomY - iconH; 
+
+  for (let i = 0; i < Math.min(lives - 1, 3); i++) {
+    const x = startX + i * (iconW + gap);
+    ctx.drawImage(iconSrc, x, iconY, iconW, iconH);
+  }
+}
+
+
+  ctx.restore();
+}
+
 
 function loadImage(src, callback)
 {
@@ -424,11 +522,11 @@ function main(timestamp) {
   if (!lastTime) lastTime = timestamp;
   var dt = (timestamp - lastTime) / 1000;
 
-	while (accumulator >= gameUpdateRate)
-	{
-		update();
-		accumulator -= gameUpdateRate;
-	}
+	while (accumulator >= gameUpdateRate) {
+  if (!window.__paused) update();
+  accumulator -= gameUpdateRate;
+}
+
 
 	accumulator += dt;
 
@@ -454,4 +552,6 @@ function waitForGOInit()
 	}
 }
 
-waitForGOInit();
+window.__startWhenReady = function () {
+  waitForGOInit();
+};

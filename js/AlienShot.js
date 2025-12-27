@@ -170,6 +170,7 @@ class AlienShot extends GameObject
             {
                 player.isDead = true;
                 this.reset();
+                window.sound?.playExplosion();
             }
 
             if (this.y + this.height >= groundLineY)

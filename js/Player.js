@@ -20,14 +20,35 @@ class Player extends GameObject
         var spritesReady = 0;
         
         loadImage("img/player/player.png", async (img) => {
-			this.spriteAlive = img;
-			this.width = img.width;
-			this.height = img.height;
-            this.mask = await createBitmask(img, 1);
+  this.spriteAlive = img;
+  this.width = img.width;
+  this.height = img.height;
+  this.mask = await createBitmask(img, 1);
 
-			spritesReady++;
-            this.isInitialized = tryInit(spritesReady, 3);
-		});
+  // --- HUD için yeşil ikon cache ---
+  this.hudIconGreen = document.createElement("canvas");
+  this.hudIconGreen.width = img.width;
+  this.hudIconGreen.height = img.height;
+  const hctx = this.hudIconGreen.getContext("2d", { willReadFrequently: true });
+  hctx.clearRect(0, 0, img.width, img.height);
+  hctx.drawImage(img, 0, 0);
+
+  const id = hctx.getImageData(0, 0, img.width, img.height);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] !== 0) {      // alpha > 0 ise
+      d[i] = 0;               // R
+      d[i + 1] = 255;         // G
+      d[i + 2] = 0;           // B
+    }
+  }
+  hctx.putImageData(id, 0, 0);
+  // --- /HUD cache ---
+
+  spritesReady++;
+  this.isInitialized = tryInit(spritesReady, 3);
+});
+
 
         loadImage("img/player/player-death/1.png", (img) => {
 			this.spriteDead1 = img;
