@@ -19,6 +19,9 @@ var unit = canvas.height/256;
 const gameWidth = 224;
 const gameHeight = 256;
 var gameUpdateRate = 1/60;
+const delayBetweenWaves = 60;
+
+var timerBetweenWaves = delayBetweenWaves;
 
 const DEBUGMODE = false;
 

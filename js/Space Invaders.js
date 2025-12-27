@@ -283,38 +283,38 @@ function update()
   }
 
   if (lives > 0)
-  {
-    if (!obtainedExtraLife && playerScore >= bonusScore)
+  {    
+    if (aliensAlive > 0)
+    {
+      for(let go of gameObjects)
+      {
+        go.update();
+      }
+
+      if (!obtainedExtraLife && playerScore >= bonusScore)
       {
         lives++;
         obtainedExtraLife = true;
       }
 
-    if(alienRefPos[1] > minAlienYToSaucer)
-    {
-      if (timeUntilSaucer == 0) {
-          timeUntilSaucer = 0x0600;
-          saucerFlag = true;
-      }
-      timeUntilSaucer--;
-    }
-
-    if (!player.isDead && player.initialDelay == 0)
-    {
-      if (--alienFireTimer <= 0)
+      if(alienRefPos[1] > minAlienYToSaucer)
       {
-        alienFireTimer = 0;
-        alienFire = true;
+        if (timeUntilSaucer == 0) {
+            timeUntilSaucer = 0x0600;
+            saucerFlag = true;
+        }
+        timeUntilSaucer--;
       }
-    }
-    
-    for(let go of gameObjects)
-    {
-      go.update();
-    }
-    
-    if (aliensAlive > 0)
-    {
+
+      if (!player.isDead && player.initialDelay == 0)
+      {
+        if (--alienFireTimer <= 0)
+        {
+          alienFireTimer = 0;
+          alienFire = true;
+        }
+      }
+
       if (!player.isDead)
       {
         updateAliens();
@@ -323,6 +323,10 @@ function update()
     }
     else
     {
+      timerBetweenWaves--;
+      if (timerBetweenWaves !== 0) return;
+      timerBetweenWaves = delayBetweenWaves;
+
       level++;
       player.x = playerStartPosition[0];
       player.initialDelay = playerInitialDelay;
@@ -430,7 +434,7 @@ function render()
   rollingShot.render();
   saucer.render();
 
-  recolorWhiteBands(ctx, canvas.width, canvas.height, (saucerPosY + saucer.height + 3) * unit, (shieldsPosY - 3) * unit, {
+  recolorWhiteBands(ctx, canvas.width, canvas.height, (saucerPosY + saucer.height + 1) * unit, (shieldsPosY) * unit, {
     whiteThreshold: 255,
     tolerance: 0
   });
