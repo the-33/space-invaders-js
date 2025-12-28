@@ -1,2 +1,2 @@
-# space invaders js
+# Space invaders js
 A Space Invaders web game using JavaScript and Canvas

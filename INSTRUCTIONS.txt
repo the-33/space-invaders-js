@@ -1,0 +1,88 @@
+SPACE INVADERS (HTML/JS) — How to run the game without Live Server (BAT/SH)
+
+WHY THESE FILES ARE NEEDED
+When you open index.html directly (double click), the browser runs it using the:
+  file:///...
+
+scheme. In this mode, modern browsers apply strict security restrictions
+(CORS / Same-Origin Policy):
+
+- fetch() to local files is blocked (JSON, binary data, etc.)
+- ES module imports (type="module") may be blocked or partially restricted
+- Loading assets from JavaScript can fail or behave differently
+- Canvas operations can be affected when generating data (for example,
+  when creating pixel masks / bitmasks from images)
+
+In this project, this directly affects things like:
+- Loading sprites, sounds, or data from JavaScript
+- Any logic that builds pixel-perfect collision masks from images
+- Any use of fetch(), dynamic imports, or asset preprocessing
+
+To avoid these issues, the project must be served over HTTP, even locally:
+  http://localhost:8000
+
+When the game is served from localhost, the browser treats it as a normal
+origin and CORS restrictions do not interfere. That is why we use the
+run_game.bat and run_game.sh scripts: they start a local HTTP server using
+Python and automatically open the correct URL.
+
+-------------------------------------------------------------------------------
+
+INSTRUCTIONS (WINDOWS)
+1) Make sure Python is installed and available in PATH.
+   - Test in Command Prompt or PowerShell:
+       python --version
+
+2) Place the file:
+       run_game.bat
+   in the same directory as index.html.
+
+3) Run the game:
+   - Double click run_game.bat
+   - Your browser will open automatically at:
+       http://localhost:8000
+   - The console window will stay open while the server is running.
+
+4) To stop the server:
+   - Close the console window, or press Ctrl+C inside it.
+
+Notes:
+- If port 8000 is already in use, change in run_game.bat:
+    set PORT=8000
+  to another port (for example 8080).
+
+-------------------------------------------------------------------------------
+
+INSTRUCTIONS (LINUX)
+1) Make sure Python 3 is installed.
+   - Test in a terminal:
+       python3 --version
+   (if that does not exist, try python --version)
+
+2) Place the file:
+       run_game.sh
+   in the same directory as index.html.
+
+3) Make it executable:
+       chmod +x run_game.sh
+
+4) Run the game:
+       ./run_game.sh
+   - Your browser will open automatically (if xdg-open is available).
+   - The server will be running at:
+       http://localhost:8000
+
+5) To stop the server:
+   - Press Ctrl+C in the terminal.
+
+Notes:
+- If port 8000 is already in use, edit in run_game.sh:
+    PORT=8000
+  and change it to another port (for example 8080).
+
+-------------------------------------------------------------------------------
+
+TL;DR
+- Opening index.html directly uses file:// and triggers CORS restrictions.
+- Running a local HTTP server (localhost) avoids those restrictions.
+- run_game.bat (Windows) and run_game.sh (Linux) automate server startup and URL opening.
