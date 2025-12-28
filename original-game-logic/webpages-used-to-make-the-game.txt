@@ -1,0 +1,25 @@
+full ROM explanation (+ assets):
+https://www.computerarcheology.com/Arcade/SpaceInvaders/
+
+original playable game in the web:
+https://www.retrogames.cc/arcade-games/space-invaders-space-invaders-m.html#
+
+gameplay videos:
+https://www.youtube.com/watch?v=MU4psw3ccUI
+https://www.youtube.com/watch?v=34n-s148jYE
+https://www.youtube.com/watch?v=l2dXlHho3oU
+
+sounds (not the original ones but as close as we can get without recreating the actual physical circuits or the original sound waves):
+https://classicgaming.cc/classics/space-invaders/sounds
+
+videos about the original sounds:
+https://www.youtube.com/watch?v=haHSgdZHHwc
+https://www.youtube.com/watch?v=GSdYijiBqqs
+
+font:
+https://fontstruct.com/fontstructions/show/2438283/space-invaders-full-version
+
+artwork:
+https://www.ebay.co.uk/itm/331879845405
+
+
